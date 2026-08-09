@@ -231,3 +231,39 @@ it('round-trips every read model through json', function () {
         ->and($array['variants'][0]['sku'])->toBe('TEE-S')
         ->and($array['publications'][0]['channel_id'])->toBe(1);
 });
+
+it('serialises every read model on its own, not only nested inside a product', function () {
+    // Each of these is what an `-api` adapter hands back from its own endpoint,
+    // so each has to stand up alone. Reached only through `ProductData` they
+    // look covered while their own `jsonSerialize` has never run.
+    $brand = (new CreateBrand())->handle('Acme', null, ['logo' => 'acme.png', 'website' => 'https://acme.test']);
+    $vendor = (new CreateVendor())->handle('Supplier');
+    $category = (new CreateCategory())->handle('Knitwear');
+    $collection = (new CreateCollection())->handle('Summer');
+    $product = Product::factory()->create([
+        'brand_id' => $brand->id,
+        'vendor_id' => $vendor->id,
+        'category_id' => $category->id,
+    ]);
+    (new AddVariant())->handle($product, 'TEE-S', 'Small', ['Small']);
+    (new PublishToChannel())->handle($product, 3);
+
+    $data = (new ProductQuery())->find($product->id);
+
+    expect(json_decode(json_encode($data->brand), true))
+        ->toBe(['id' => $brand->id, 'name' => 'Acme', 'slug' => 'acme', 'logo' => 'acme.png', 'website' => 'https://acme.test'])
+        ->and(json_decode(json_encode($data->vendor), true))
+        ->toBe(['id' => $vendor->id, 'name' => 'Supplier', 'slug' => 'supplier'])
+        ->and(json_decode(json_encode($data->category), true)['slug'])->toBe('knitwear')
+        ->and(json_decode(json_encode($data->variants[0]), true)['option_values'])->toBe(['Small'])
+        ->and(json_decode(json_encode($data->publications[0]), true))
+        ->toBe(['channel_id' => 3, 'published_at' => null, 'unpublished_at' => null, 'live' => true])
+        ->and(json_decode(json_encode(CollectionData::from($collection)), true)['slug'])->toBe('summer');
+});
+
+it('carries a brand, a vendor and a category through the product’s own array form', function () {
+    $brand = (new CreateBrand())->handle('Acme');
+    $product = Product::factory()->create(['brand_id' => $brand->id]);
+
+    expect((new ProductQuery())->find($product->id)->toArray()['brand']['slug'])->toBe('acme');
+});
