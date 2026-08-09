@@ -1,0 +1,37 @@
+{
+    "$schema": "https://schemas.liberu.dev/module/v1.json",
+    "name": "ecommerce-catalog",
+    "display_name": "Catalog",
+    "description": "The product information boundary: products and their variants, the taxonomy they hang from, and where and when each one is offered.",
+    "version": "0.1.0",
+    "category": "capability",
+    "provider": "Liberu\\Ecommerce\\Catalog\\CatalogServiceProvider",
+    "requires": {
+        "php": "^8.5",
+        "laravel": "^13.0",
+        "packages": {
+            "liberusoftware/module-manager": "^1.4"
+        }
+    },
+    "capabilities": [
+        "ecommerce.catalog"
+    ],
+    "default_enabled": false,
+    "features": [
+        "Products",
+        "Variants",
+        "Product options",
+        "Categories",
+        "Collections",
+        "Tags",
+        "Brands",
+        "Vendors",
+        "Channel publication",
+        "Visibility",
+        "Effective dates",
+        "Domain events",
+        "Read models",
+        "Catalog queries",
+        "Telemetry"
+    ]
+}
