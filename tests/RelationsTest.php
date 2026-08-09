@@ -103,3 +103,19 @@ it('drops an empty option value rather than rendering it as a blank segment', fu
 
     expect($variant->optionValues())->toBe(['Red']);
 });
+
+it('ships a working factory for every model, because a consumer builds fixtures with them', function (string $model) {
+    // The factories are public surface: a presentation package's tests build
+    // their fixtures with these, and a broken one is discovered in somebody
+    // else's repository rather than this one.
+    expect($model::factory()->create())->toBeInstanceOf($model);
+})->with([
+    'products' => [Product::class],
+    'variants' => [ProductVariant::class],
+    'options' => [ProductOption::class],
+    'categories' => [Category::class],
+    'collections' => [ProductCollection::class],
+    'tags' => [Tag::class],
+    'brands' => [Brand::class],
+    'vendors' => [Vendor::class],
+]);
