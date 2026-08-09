@@ -1,4 +1,4 @@
-# Ecommerce: Catalog Core Module
+# Ecommerce: Catalog
 
 > This package is the authoritative, provider-neutral implementation of Catalog. It owns domain behavior and data; optional API, Filament, Livewire, React, Vue, and Nuxt packages translate its public contracts for their surfaces.
 
@@ -9,6 +9,9 @@
 
 ![PHP](https://img.shields.io/badge/PHP-8.5-777BB4?logo=php&logoColor=white) ![Laravel](https://img.shields.io/badge/Laravel-13-FF2D20?logo=laravel&logoColor=white)
 [![Latest release](https://img.shields.io/github/v/release/liberusoftware/module-ecommerce-catalog?sort=semver)](https://github.com/liberusoftware/module-ecommerce-catalog/releases/latest) [![Tests](https://github.com/liberusoftware/module-ecommerce-catalog/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/liberusoftware/module-ecommerce-catalog/actions/workflows/tests.yml)
+
+Products, variants, categories, collections, tags, brands, vendors, channel
+publication, visibility and effective dates.
 
 ## Features
 
@@ -28,11 +31,74 @@
 To install this package via Composer, run:
 
 ```bash
-composer require liberusoftware/module-ecommerce-catalog
+composer require liberusoftware/ecommerce-catalog
 ```
+
+Installing boots nothing. The module ships no `extra.laravel.providers`, so
+`ModuleManagerServiceProvider` is the only thing that registers it, and only
+when the deployment names it:
+
+```dotenv
+MODULES_ENABLED=ecommerce-catalog
+```
+
+## Three questions this module keeps apart
+
+A product is described by three independent facts, and conflating any two of
+them is the mistake this design exists to prevent:
+
+| Question | Answered by |
+| --- | --- |
+| Is it sellable at all? | `status` — `draft → active ⇄ discontinued → archived` |
+| Does it appear in listings, or only by direct link? | `visibility` — `public`, `unlisted`, `hidden` |
+| Between when, and on which storefront? | its own effective dates, **and** a per-channel publication window |
+
+```php
+use Liberu\Ecommerce\Catalog\Actions\{CreateProduct, ChangeProductStatus, PublishToChannel};
+use Liberu\Ecommerce\Catalog\Enums\ProductStatus;
+
+$product = (new CreateProduct())->handle('Merino Crew', teamId: 7, storeId: 3);
+(new ChangeProductStatus())->handle($product, ProductStatus::Active);
+(new PublishToChannel())->handle($product, channelId: 1);
+```
+
+## What this module does not own
+
+**No price and no stock.** Not an omission. Pricing and Inventory Ledger extend
+a product through their own tables keyed on `products.id` and
+`product_variants.id` — those two ids are the integration point, and they are
+stable. A price column here would make this package the owner of a rule it does
+not enforce.
+
+**No stores and no channels.** `store_id` and `channel_id` are plain indexed
+columns with no foreign key, because those tables belong to
+`liberusoftware/ecommerce-commerce-core`, which is not a dependency. A host that
+wants a channel's *name* rather than its number names the class in config.
+
+### What the host owns
+
+**The team model.** Every owned model resolves `config('catalog.team_model')` at
+call time, defaulting to `App\Models\Team`. An application whose team model
+lives elsewhere publishes the config and says so:
+
+```bash
+php artisan vendor:publish --tag=catalog-config
+```
+
+**Store scoping.** `products.store_id` is populated by the host — this module
+never writes it. `Product::scopeForStore()` is here for callers that want the
+filter explicitly.
+
+**A backfill, if you already have a catalogue.** `status` and `visibility`
+default to `draft` and `hidden`, which is right for a row being created and
+wrong for every row that already sells. See the adoption guide.
 
 ## Documentation
 
+- [Adoption guide](docs/adoption.md) — install, enable, and what the host must supply
+- [The domain](docs/domain.md) — aggregates, actions, queries, events, authorization, tables
+- [Runbook](docs/runbook.md) — what breaks in production and what to do about it
+- [Changelog](CHANGELOG.md)
 - [Liberu Main Documentation](https://github.com/liberusoftware/documentation)
 - [Architecture & Standards Index](https://github.com/liberusoftware/documentation/tree/main/architecture)
 

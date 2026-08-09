@@ -173,11 +173,17 @@ class Product extends Model
     }
 
     /**
-     * Sellable, inside its own effective dates, and — when a channel is named —
-     * published there with that publication also in force.
+     * Sellable, reachable, inside its own effective dates, and — when a channel
+     * is named — published there with that publication also in force.
      *
      * Passing no channel asks the catalogue-wide question, which is what an
-     * admin listing and a stock report want. Passing one asks the storefront's.
+     * admin listing wants. Passing one asks the storefront's.
+     *
+     * `hidden` is excluded here rather than only in `listedOn`, because hidden
+     * means not reachable at all: a direct URL to one must 404 the same way a
+     * draft does. `unlisted` is *not* excluded here, and that difference is the
+     * only reason the middle visibility exists — a campaign link keeps working
+     * while the product stays out of every listing.
      *
      * @param  Builder<self>  $query
      */
@@ -186,6 +192,7 @@ class Product extends Model
         $at ??= now();
 
         $query->where('status', ProductStatus::Active)
+            ->where('visibility', '!=', Visibility::Hidden)
             ->where(fn (Builder $window) => $window->whereNull('available_from')->orWhere('available_from', '<=', $at))
             ->where(fn (Builder $window) => $window->whereNull('available_until')->orWhere('available_until', '>', $at))
             ->when($channelId !== null, fn (Builder $scoped) => $scoped->whereHas(

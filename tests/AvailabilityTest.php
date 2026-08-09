@@ -72,6 +72,7 @@ it('decides availability from the status, the window and the moment', function (
     expect($product->isAvailableOn(null, CarbonImmutable::parse($at)))->toBe($expected);
 })->with([
     'active, no window' => [['status' => ProductStatus::Active], '2026-06-15', true],
+    'hidden is as unreachable as a draft' => [['visibility' => Visibility::Hidden], '2026-06-15', false],
     'draft, no window' => [['status' => ProductStatus::Draft], '2026-06-15', false],
     'discontinued' => [['status' => ProductStatus::Discontinued], '2026-06-15', false],
     'archived' => [['status' => ProductStatus::Archived], '2026-06-15', false],
@@ -92,10 +93,11 @@ it('keeps hidden and unlisted products out of listings while leaving them reacha
     expect($public->isListedOn())->toBeTrue()
         ->and($unlisted->isListedOn())->toBeFalse()
         ->and($hidden->isListedOn())->toBeFalse()
-        // Availability is the reachability question, and it ignores visibility
-        // on purpose — that is what makes an unlisted campaign link work.
+        // The one difference between the two middle states, and the only
+        // reason `unlisted` exists: a campaign link still resolves to it,
+        // while `hidden` is as unreachable as a draft.
         ->and($unlisted->isAvailableOn())->toBeTrue()
-        ->and($hidden->isAvailableOn())->toBeTrue();
+        ->and($hidden->isAvailableOn())->toBeFalse();
 });
 
 it('gives the list query and the single-record check the same answer', function () {
